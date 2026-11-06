@@ -1,0 +1,46 @@
+name: Build static site
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 21 * * *' # 06:17 KST
+permissions:
+  contents: read
+concurrency:
+  group: static-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - uses: actions/cache@v4
+        with:
+          path: .youtube-cache.json
+          key: youtube-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            youtube-${{ github.ref_name }}-
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - run: python build_static.py
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          CHANNEL_ID: ${{ vars.CHANNEL_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swimming-map-static
+          path: dist
+          include-hidden-files: true
+      - name: Deploy to Cloudflare Pages (optional)
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.CLOUDFLARE_PROJECT_NAME != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }} --branch=main
