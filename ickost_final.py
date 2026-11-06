@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 # API 키를 환경변수로 변경
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
-CHANNEL_ID = os.getenv('CHANNEL_ID', 'UC82OkWXaNdFQb10wm-OY2YA')
+CHANNEL_ID = (os.getenv('CHANNEL_ID') or 'UC82OkWXaNdFQb10wm-OY2YA')
 
 
 def extract_video_id(url):
@@ -110,110 +110,16 @@ def calculate_route_stats(route_points):
     return total_distance, estimated_time_minutes
 
 
+# Metadata is cached across requests; static builds refresh it once in batches.
+from youtube_metadata import get_video_info, get_channel_metadata
+
+
 def get_youtube_video_info(video_url):
-    video_id = extract_video_id(video_url)
-    print(f"Video ID: {video_id}")
-    print(f"API Key exists: {bool(YOUTUBE_API_KEY)}")
-
-    if not video_id or not YOUTUBE_API_KEY:
-        print("API 키가 없거나 video_id가 없음")
-        return {
-            'duration': '8:45',
-            'viewCount': '2.1만',
-            'publishedAt': '2024년 8월 21일',
-            'title': None,
-            'description': '',
-            'viewCountNum': 21000
-        }
-
-    try:
-        url = f"https://www.googleapis.com/youtube/v3/videos"
-        params = {
-            'part': 'snippet,contentDetails,statistics',
-            'id': video_id,
-            'key': YOUTUBE_API_KEY
-        }
-        response = requests.get(url, params=params, timeout=10)
-        data = response.json()
-
-        if 'items' in data and len(data['items']) > 0:
-            item = data['items'][0]
-            snippet = item.get('snippet', {})
-            content_details = item.get('contentDetails', {})
-            statistics = item.get('statistics', {})
-
-            view_count = statistics.get('viewCount', '0')
-            formatted_views = format_view_count(int(view_count))
-
-            return {
-                'duration': format_duration(content_details.get('duration', 'PT0S')),
-                'viewCount': formatted_views,
-                'publishedAt': format_date(snippet.get('publishedAt', '')),
-                'title': snippet.get('title'),
-                'description': snippet.get('description', '')[:100] + '...' if len(
-                    snippet.get('description', '')) > 100 else snippet.get('description', ''),
-                'viewCountNum': int(view_count)
-            }
-    except Exception as e:
-        print(f"YouTube API 오류: {e}")
-
-    return {
-        'duration': '8:45',
-        'viewCount': '2.1만',
-        'publishedAt': '2024년 8월 21일',
-        'title': None,
-        'description': '',
-        'viewCountNum': 21000
-    }
+    return get_video_info(extract_video_id(video_url))
 
 
 def get_channel_info():
-    try:
-        url = f"https://www.googleapis.com/youtube/v3/channels"
-        params = {
-            'part': 'snippet,statistics',
-            'id': CHANNEL_ID,
-            'key': YOUTUBE_API_KEY
-        }
-        response = requests.get(url, params=params, timeout=10)
-        data = response.json()
-
-        if 'items' in data and len(data['items']) > 0:
-            item = data['items'][0]
-            snippet = item.get('snippet', {})
-            statistics = item.get('statistics', {})
-
-            subscriber_count = statistics.get('subscriberCount', '0')
-            video_count = statistics.get('videoCount', '0')
-
-            if subscriber_count == '0' or not subscriber_count:
-                subscriber_display = '구독자 수 비공개'
-            else:
-                subscriber_display = format_view_count(int(subscriber_count))
-
-            thumbnails = snippet.get('thumbnails', {})
-            thumbnail_url = (
-                    thumbnails.get('high', {}).get('url') or
-                    thumbnails.get('medium', {}).get('url') or
-                    thumbnails.get('default', {}).get('url') or
-                    'https://yt3.googleusercontent.com/ytc/AIdro_kKZQj_1yJSZS-8l3v1kS_CXQwc8XggO4ybfQ=s176-c-k-c0x00ffffff-no-rj'
-            )
-
-            return {
-                'subscriberCount': subscriber_display,
-                'videoCount': video_count,
-                'title': snippet.get('title', 'ICKOST'),
-                'thumbnail': thumbnail_url
-            }
-    except Exception as e:
-        print(f"채널 정보 오류: {e}")
-
-    return {
-        'subscriberCount': '5.2만',
-        'videoCount': '127',
-        'title': 'ICKOST',
-        'thumbnail': 'https://yt3.googleusercontent.com/2pvoyX_JUZFcrn1RD1I9SCIUF62jvpkxaK77UNs50TtM8GkjyprLPu5cIPcmE9ribNOGqL9kRA=s160-c-k-c0x00ffffff-no-rj'
-    }
+    return get_channel_metadata(CHANNEL_ID)
 
 
 def get_difficulty_color(difficulty):
@@ -1399,7 +1305,7 @@ def create_map(spot_data):
     m = folium.Map(
         location=[33.389153, 126.562724],
         zoom_start=9,
-        tiles='CartoDB dark_matter'
+        tiles='OpenStreetMap'
     )
 
     for location, data in spot_data.items():
@@ -1556,6 +1462,17 @@ def create_map(spot_data):
             ).add_to(m)
     
     return m
+
+
+@app.before_request
+def prepare_metadata():
+    from youtube_metadata import refresh
+    refresh(
+        [extract_video_id(video['url'])
+         for data in SPOT_DATA.values() for spot in data['spots'].values()
+         for video in spot['videos']],
+        CHANNEL_ID,
+    )
 
 
 @app.route('/')
