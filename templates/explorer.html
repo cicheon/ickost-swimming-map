@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#123c45">
+<meta name="description" content="ICKOST와 함께 제주·부산·경남의 바다수영 장소와 경로를 찾아보세요.">
+<title>ICKOST · 바다수영 지도</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css">
+<link rel="stylesheet" href="/static/explorer.css">
+</head>
+<body>
+<header class="header">
+<a class="brand" href="/" aria-label="ICKOST 바다수영 지도 홈"><span class="brand-symbol">≈</span><span>ICKOST<small>바다수영 지도</small></span></a>
+<nav class="regions" aria-label="수영 지역"><button data-region="전체" class="active" aria-pressed="true">전체</button>{% for region in ['제주도','부산','경남'] %}<button data-region="{{region}}" aria-pressed="false">{{region}}</button>{% endfor %}</nav>
+<a class="channel-link" href="https://www.youtube.com/@ickost" target="_blank" rel="noopener noreferrer"><span>▶</span> 유튜브 채널 ↗</a>
+</header>
+<main class="workspace">
+<section class="sidebar" aria-label="수영 장소 목록">
+<div class="intro"><span class="eyebrow">FIND YOUR NEXT SWIM</span><h1>다음 수영은,<br>어느 바다로 갈까요?</h1><p>직접 수영한 바다, 영상으로 만나는 경로.</p><div class="intro-stats"><span><b>{{spots|length}}</b>개의 장소</span><i></i><span><b>{{spots|sum(attribute='video_count')}}</b>개의 수영 영상</span></div></div>
+<div class="filters">
+<label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="장소나 지역을 찾아보세요" aria-label="장소 또는 지역 검색"><kbd>/</kbd></label>
+<div class="filter-row"><label><span class="sr-only">난이도</span><select id="difficulty"><option value="">모든 난이도</option><option>초급</option><option>중급</option><option>고급</option></select></label><label><span class="sr-only">거리</span><select id="distance"><option value="">모든 거리</option><option value="2">2km 이하</option><option value="4">2~4km</option><option value="long">4km 초과</option></select></label><label><span class="sr-only">경로 유형</span><select id="route-type"><option value="">모든 경로</option><option>왕복</option><option>편도</option></select></label></div>
+</div>
+<div class="results-head"><span><b id="result-count">{{spots|length}}</b>개의 수영 장소</span><select id="sort" aria-label="장소 정렬"><option value="rating">평점 높은순</option><option value="distance">거리 짧은순</option><option value="videos">영상 많은순</option></select></div>
+<div id="spot-list" class="spot-list"></div>
+<div id="empty" class="empty" hidden><span>≈</span><h2>조건에 맞는 바다가 없어요</h2><p>검색어나 필터를 바꿔보세요.</p><button id="reset">필터 초기화</button></div>
+<footer class="list-footer">물길의 기록, ICKOST <span>·</span> 실제 수영 영상과 함께 둘러보세요.</footer>
+</section>
+<section class="map-area" aria-label="바다수영 경로 지도">
+<div id="map" aria-label="장소를 선택할 수 있는 지도"></div>
+<div class="map-toolbar"><span class="live-dot"></span><span id="map-caption">우리의 바다, 33개의 출발점</span><button id="fit-map" aria-label="검색 결과 전체를 지도에 표시">전체 보기 ↗</button></div>
+<div class="map-legend"><span><i class="round"></i> 왕복</span><span><i class="oneway"></i> 편도</span><span class="legend-hint">마커를 눌러 경로를 확인하세요</span></div>
+<aside id="detail" class="detail" hidden aria-label="선택한 장소 상세 정보"><button class="detail-close" id="close-detail" aria-label="상세 정보 닫기">×</button><div id="detail-content"></div></aside>
+</section>
+</main>
+<button id="view-toggle" class="view-toggle" aria-pressed="false">지도 보기 ↗</button>
+<div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+<script id="spot-data" type="application/json">{{ spots|tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+<script src="/static/explorer.js"></script>
+</body>
+</html>

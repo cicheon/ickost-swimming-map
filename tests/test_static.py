@@ -1,4 +1,6 @@
 import tempfile
+import json
+import re
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -38,6 +40,22 @@ class StaticTests(unittest.TestCase):
             self.assertEqual(metadata.get_video_info('old')['title'], 'Existing')
             self.assertEqual(metadata.get_video_info('missing')['viewCount'], '—')
 
+    def test_explorer_payload_and_assets(self):
+        with patch.object(metadata, '_loaded', True), app.test_client() as client:
+            html = client.get('/').get_data(as_text=True)
+            payload = re.search(r'<script id="spot-data" type="application/json">(.*?)</script>', html, re.S).group(1)
+            spots = json.loads(payload)
+            expected = sum(len(data['spots']) for data in SPOT_DATA.values())
+            self.assertEqual(len(spots), expected)
+            self.assertEqual(sum(s['video_count'] for s in spots), 75)
+            for spot in spots:
+                self.assertIn(spot['region'], SPOT_DATA)
+                self.assertEqual(len(spot['videos']), spot['video_count'])
+                self.assertTrue(spot['detail_url'].startswith('/spot/'))
+            for asset in ('explorer.js', 'explorer.css'):
+                with client.get('/static/' + asset) as response:
+                    self.assertEqual(response.status_code, 200)
+
     def test_all_routes_work_without_api(self):
         with patch.object(metadata, '_loaded', True), app.test_client() as client:
             paths = ['/'] + [f'/spot/{quote(region, safe="")}/{quote(name, safe="")}'
@@ -48,7 +66,7 @@ class StaticTests(unittest.TestCase):
                     self.assertEqual(response.status_code, 200)
                     html = response.get_data(as_text=True)
                     self.assertNotIn('cartodb-basemaps-', html)
-                    self.assertIn('tile.openstreetmap.org', html)
+                    self.assertIn('tile.openstreetmap.org', html if path != '/' else Path('static/explorer.js').read_text())
             self.assertEqual(client.get('/spot/missing/missing').status_code, 404)
 
 

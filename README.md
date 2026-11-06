@@ -1,6 +1,10 @@
 # ICKOST 바다수영 지도
 
-기존 Flask 화면을 유지하면서 메인 지도 배경을 OpenStreetMap으로 복구하고,
+장소 목록과 OpenStreetMap 지도를 연결한 탐색 화면을 제공합니다.
+지역·난이도·거리·편도/왕복 필터, 검색·정렬, 경로 강조 및 영상 패널을 지원합니다.
+모바일은 지도/목록 전환과 하단 상세 패널을 사용합니다.
+홈 화면은 `templates/explorer.html`, 스타일/동작은 `static/explorer.css`, `static/explorer.js`에서 관리합니다.
+
 홈 + 33개 상세 페이지를 정적 HTML로 생성합니다. 방문 시 Python 서버나 YouTube API가 필요하지 않습니다.
 
 ## 로컬 실행

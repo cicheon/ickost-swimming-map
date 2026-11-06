@@ -30,6 +30,7 @@ def build(output=Path('dist')):
             target = output / unquote(url).lstrip('/') / 'index.html'
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding='utf-8')
+    shutil.copytree('static', output / 'static', dirs_exist_ok=True)
     (output / '_headers').write_text(
         '/*\n  Referrer-Policy: strict-origin-when-cross-origin\n'
         '  X-Content-Type-Options: nosniff\n', encoding='utf-8')
